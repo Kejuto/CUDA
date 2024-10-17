@@ -1,0 +1,57 @@
+import numpy as np
+import time
+import cupy as cp
+import matplotlib.pyplot as plt
+
+def cpu(matrix_a, matrix_b):
+    start_time = time.time()
+    result = np.dot(matrix_a, matrix_b)
+    end_time = time.time()
+    return result, end_time - start_time
+
+def gpu(matrix_a, matrix_b):
+    matrix_a_gpu = cp.asarray(matrix_a)
+    matrix_b_gpu = cp.asarray(matrix_b)
+    start_time = time.time()
+    result_gpu = cp.dot(matrix_a_gpu, matrix_b_gpu)
+    end_time = time.time()
+    result = cp.asnumpy(result_gpu)
+    return result, end_time - start_time
+
+def main():
+    sizes = [100, 200, 500, 1000, 2000] 
+    results = []
+
+    for size in sizes:
+        matrix_a = np.random.rand(size, size)
+        matrix_b = np.random.rand(size, size)
+
+        # CPU
+        cpu_result, cpu_time = cpu(matrix_a, matrix_b)
+
+        # GPU
+        try:
+            gpu_result, gpu_time = gpu(matrix_a, matrix_b)
+            if not np.allclose(cpu_result, gpu_result):
+                print(f"Ошибка: Результаты CPU и GPU не совпадают для матриц размера {size}x{size}")
+                return
+            acceleration = cpu_time / gpu_time if gpu_time > 0 else float('inf') # Обработка деления на 0
+            results.append((size, cpu_time, gpu_time, acceleration))
+        except Exception as e:
+            print(f"Ошибка при вычислении на GPU для матриц размера {size}x{size}: {e}")
+            return
+
+    print("Размер матрицы | Время CPU (сек) | Время GPU (сек) | Ускорение")
+    print("----------------------------------------------------------")
+    for size, cpu_time, gpu_time, acceleration in results:
+        print(f"{size}x{size}         | {cpu_time:.4f}         | {gpu_time:.4f}         | {acceleration:.2f}")
+
+    plt.plot([size for size, _, _, _ in results], [acc for _, _, _, acc in results])
+    plt.xlabel("Размер матрицы (n)")
+    plt.ylabel("Ускорение (CPU/GPU)")
+    plt.title("Ускорение перемножения матриц")
+    plt.grid(True)
+    plt.show()
+
+if __name__ == "__main__":
+    main()
